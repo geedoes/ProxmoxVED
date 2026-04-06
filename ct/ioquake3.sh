@@ -44,4 +44,4 @@ echo -e "${TAB}${BGN}1.${CL} Upload your 'pak0.pk3' to Proxmox ISO storage, rena
 echo -e "${TAB}${BGN}2.${CL} Run the following command on your Proxmox Host to deploy it:"
 echo -e "${TAB}${TAB}${GN}pct push $CTID /var/lib/vz/template/iso/pak0.iso /opt/ioquake3/baseq3/pak0.pk3${CL}"
 echo -e "${TAB}${BGN}3.${CL} Fix permissions and restart:"
-echo -e "${TAB}${TAB}${GN}pct exec $CTID -- bash -c \"chown -R quake3:quake3 /opt/ioquake3/ && systemctl restart ioquake3\"${CL}"
+echo -e "${TAB}${TAB}${GN}pct exec $CTID -- systemctl restart ioquake3${CL}"
