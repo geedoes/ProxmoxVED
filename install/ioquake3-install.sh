@@ -16,6 +16,7 @@ update_os
 msg_info "Installing Dependencies"
 $STD apt install -y \
   build-essential \
+  git \
   cmake \
   libsdl2-dev \
   libcurl4-openssl-dev \
