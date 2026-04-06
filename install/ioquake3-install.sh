@@ -5,6 +5,7 @@
 # License: MIT | https://github.com/community-scripts/ProxmoxVED/raw/main/LICENSE
 # Source: https://ioquake3.org/
 
+# Standard Header for ProxmoxVED Scripts
 source /dev/stdin <<<"$FUNCTIONS_FILE_PATH"
 color
 verb_ip6
@@ -14,38 +15,43 @@ network_check
 update_os
 
 msg_info "Installing Dependencies"
-$STD apt install -y \
-  build-essential \
-  git \
-  cmake \
-  libsdl2-dev \
-  libcurl4-openssl-dev \
-  zlib1g-dev \
-  pkg-config
+$STD apt-get install -y \
+    build-essential \
+    git \
+    cmake \
+    libsdl2-dev \
+    libcurl4-openssl-dev \
+    zlib1g-dev \
+    pkg-config \
+    unzip
 msg_ok "Installed Dependencies"
 
 msg_info "Compiling ioquake3 Dedicated Server"
-$STD git clone --depth 1 https://github.com/ioquake/ioq3.git /opt/ioq3-src
+# Standard ProxmoxVED practice: Use /opt for third-party apps
+git clone --depth 1 https://github.com/ioquake/ioq3.git /opt/ioq3-src
 cd /opt/ioq3-src
 mkdir -p build && cd build
+# Optimization: Building only the server binary for LXC efficiency
 $STD cmake -DBUILD_CLIENT=OFF -DBUILD_SERVER=ON ..
 $STD make -j$(nproc)
+
 SERVER_BIN=$(find . -maxdepth 2 -type f -name "ioq3ded*" -executable | head -n 1)
 if [[ -z "$SERVER_BIN" ]]; then
   msg_error "Compilation finished but ioq3ded binary was not found!"
   exit 1
 fi
+
 mkdir -p /opt/ioquake3/baseq3
 cp "$SERVER_BIN" /opt/ioquake3/ioq3ded
 chmod +x /opt/ioquake3/ioq3ded
-rm -rf /opt/ioq3-src
 msg_ok "Compiled ioquake3 Dedicated Server"
 
 msg_info "Downloading Latest Patch pk3s"
+# Using $STD for progress hiding as per guide
 $STD wget -O /tmp/patch.zip "https://files.ioquake3.org/quake3-latest-pk3s.zip"
-$STD unzip /tmp/patch.zip -d /tmp/patch_unzip
+mkdir -p /tmp/patch_unzip
+$STD unzip -q /tmp/patch.zip -d /tmp/patch_unzip
 cp -a /tmp/patch_unzip/quake3-latest-pk3s/* /opt/ioquake3/
-rm -rf /tmp/patch.zip /tmp/patch_unzip
 msg_ok "Downloaded Latest Patch pk3s"
 
 msg_info "Creating Server Configuration"
@@ -62,7 +68,7 @@ seta g_inactivity 3000
 seta g_forcerespawn 0
 seta g_log "games.log"
 seta logfile 1
-seta rconpassword "changeme"
+seta rconpassword "$(openssl rand -hex 12)"
 seta com_legacyprotocol 68
 map q3dm17
 EOF
@@ -87,6 +93,14 @@ WantedBy=multi-user.target
 EOF
 systemctl enable -q --now ioquake3
 msg_ok "Created Service"
+
+# ProxmoxVED Standards: Cleanup and finalization
+msg_info "Cleanup"
+rm -rf /opt/ioq3-src /tmp/patch.zip /tmp/patch_unzip
+# Remove build-only dependencies to keep LXC small
+$STD apt-get purge -y build-essential cmake git
+$STD apt-get autoremove -y
+msg_ok "Cleanup Completed"
 
 motd_ssh
 customize
